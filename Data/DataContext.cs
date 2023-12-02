@@ -1,19 +1,31 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System;
 
-namespace PruebaCodere.Data
+namespace PruebaCodere.Models
 {
     public class DataContext : DbContext
     {
-        public DataContext(DbContextOptions<DataContext> options) : base(options) { }
-
-        public DbSet<Show> Shows { get; set; }
-        public DbSet<Genre> Genres { get; set; }
-        // ... otras DbSet para tus entidades
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        public DataContext(DbContextOptions<DataContext> options)
+            : base(options)
         {
-            // Configuraciones adicionales si es necesario
-            // modelBuilder.Entity<TuEntidad>().ToTable("NombreDeLaTabla");
         }
+
+        public DbSet<ShowInfo> Shows { get; set; }
+        public DbSet<Genre> Genres { get; set; }
+        public DbSet<Network> Networks { get; set; }
+        public DbSet<Schedule> Schedules { get; set; }
+        public DbSet<Image> Images { get; set; }
+        public DbSet<Link> Links { get; set; }
+
+        //protected override void OnModelCreating(ModelBuilder modelBuilder)
+        //{
+        //    modelBuilder.Entity<Show>()
+        //        .HasMany(s => s.Genres)
+        //        .WithMany(g => g.Shows)
+        //        .UsingEntity(j => j.ToTable("ShowGenres"));
+
+        //    base.OnModelCreating(modelBuilder);
+        //}
     }
+
 }

@@ -1,41 +1,71 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using NombreDeTuProyecto.Models;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using PruebaCodere.Models;
 using System;
+using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http;
-using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace PruebaCodere.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize] // Aplicar autorización a todo el controlador
     public class ShowsController : ControllerBase
     {
         private readonly HttpClient _httpClient;
+        private readonly DataContext _dbContext;
+        private readonly IConfiguration _configuration;
 
-        public ShowsController()
+        public ShowsController(DataContext dbContext, IConfiguration configuration)
         {
             _httpClient = new HttpClient();
-            _httpClient.BaseAddress = new Uri("http://www.tvmaze.com/api/");
+            _httpClient.BaseAddress = new System.Uri("https://api.tvmaze.com/");
+            _dbContext = dbContext;
+            _configuration = configuration;
         }
 
-        [HttpGet("shows-main-information")]
-        public async Task<IActionResult> GetShowsMainInformation()
+        [HttpPost("crear-clave")]
+        [AllowAnonymous] // Permitir acceso sin autenticación
+        public IActionResult CrearClave()
         {
-            try
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: new[] { new Claim(ClaimTypes.Name, "username") },
+                expires: DateTime.Now.AddMinutes(30),
+                signingCredentials: creds);
+
+            return Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token) });
+        }
+
+        [HttpGet("shows/{id}")]
+        public async Task<IActionResult> GetShowById(int id)
+        {
+            var response = await _httpClient.GetAsync($"shows/{id}");
+
+            if (response.IsSuccessStatusCode)
             {
-                var response = await _httpClient.GetAsync("shows");
-                if (response.IsSuccessStatusCode)
-                {
-                    var showInfo = await response.Content.ReadFromJsonAsync<ShowInfo>();
-                    return Ok(showInfo);
-                }
-                return StatusCode((int)response.StatusCode, "Error retrieving data from TVMaze API");
+                var showInfo = await response.Content.ReadAsStringAsync();
+                var show = JsonSerializer.Deserialize<ShowInfo>(showInfo);
+
+                _dbContext.Shows.Add(show);
+                await _dbContext.SaveChangesAsync();
+
+                return Ok(showInfo);
             }
-            catch (Exception ex)
-            {
-                return BadRequest($"Exception: {ex.Message}");
-            }
+
+            return StatusCode((int)response.StatusCode, "Error retrieving data from TVMaze API");
         }
     }
 }
