@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 
 namespace PruebaCodere.Models
@@ -49,11 +50,19 @@ namespace PruebaCodere.Models
         public string OfficialSite { get; set; }
     }
 
+    [Keyless]
+    public class ScheduleDay
+    {
+        public string Day { get; set; }
+        public int ScheduleId { get; set; }
+        public Schedule Schedule { get; set; }
+    }
+
     public class Schedule
     {
         public int Id { get; set; }
         public string Time { get; set; }
-        public List<string> Days { get; set; }
+        public List<ScheduleDay> Days { get; set; }
     }
 
     public class Image

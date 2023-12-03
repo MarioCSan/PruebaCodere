@@ -32,7 +32,7 @@ namespace PruebaCodere.Controllers
             _configuration = configuration;
         }
 
-        [HttpPost("crear-clave")]
+        [HttpPost("crearClave")]
         [AllowAnonymous] // Permitir acceso sin autenticación
         public IActionResult CrearClave()
         {
@@ -49,8 +49,21 @@ namespace PruebaCodere.Controllers
             return Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token) });
         }
 
-        [HttpGet("shows/{id}")]
+        [HttpGet("ObtenerShow/{id}")]
         public async Task<IActionResult> GetShowById(int id)
+        {
+            var show = await _dbContext.Shows.FindAsync(id);
+
+            if (show != null)
+            {
+                return Ok(show);
+            }
+
+            return NotFound("Show not found in the database");
+        }
+
+        [HttpPost("GuardarShowDesdeAPI/{id}")]
+        public async Task<IActionResult> GuardarShowDesdeAPI(int id)
         {
             var response = await _httpClient.GetAsync($"shows/{id}");
 
@@ -62,10 +75,11 @@ namespace PruebaCodere.Controllers
                 _dbContext.Shows.Add(show);
                 await _dbContext.SaveChangesAsync();
 
-                return Ok(showInfo);
+                return Ok(show);
             }
 
-            return StatusCode((int)response.StatusCode, "Error retrieving data from TVMaze API");
+            return StatusCode((int)response.StatusCode, "Error al obtener datos desde la API externa");
         }
     }
+}
 }
