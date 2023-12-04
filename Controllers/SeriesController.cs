@@ -27,7 +27,7 @@ namespace PruebaCodere.Controllers
         public ShowsController(DataContext dbContext, IConfiguration configuration)
         {
             _httpClient = new HttpClient();
-            _httpClient.BaseAddress = new System.Uri("https://api.tvmaze.com/");
+            _httpClient.BaseAddress = new System.Uri("https://api.tvmaze.com/shows/");
             _dbContext = dbContext;
             _configuration = configuration;
         }
@@ -52,34 +52,71 @@ namespace PruebaCodere.Controllers
         [HttpGet("ObtenerShow/{id}")]
         public async Task<IActionResult> GetShowById(int id)
         {
-            var show = await _dbContext.Shows.FindAsync(id);
+            var show = await _dbContext.Shows
+                .Include(s => s.Rating)
+                .Include(s => s.Network)
+                    .ThenInclude(n => n.Country)
+                .Include(s => s.Image)
+                .Include(s => s.Links)
+                .FirstOrDefaultAsync(s => s.Id == id);
 
             if (show != null)
             {
                 return Ok(show);
             }
 
-            return NotFound("Show not found in the database");
+            return NotFound("Show no encontrado en la base de datos");
         }
 
-        [HttpPost("GuardarShowDesdeAPI/{id}")]
-        public async Task<IActionResult> GuardarShowDesdeAPI(int id)
+        [HttpPost]
+        public async Task<IActionResult> GetAndSaveShow(int id)
         {
-            var response = await _httpClient.GetAsync($"shows/{id}");
-
-            if (response.IsSuccessStatusCode)
+            try
             {
-                var showInfo = await response.Content.ReadAsStringAsync();
-                var show = JsonSerializer.Deserialize<ShowInfo>(showInfo);
+                HttpResponseMessage response = await _httpClient.GetAsync("https://api.tvmaze.com/shows/"+id);
 
-                _dbContext.Shows.Add(show);
-                await _dbContext.SaveChangesAsync();
+                if (response.IsSuccessStatusCode)
+                {
+                    string apiResponse = await response.Content.ReadAsStringAsync();
+                    var showFromApi = JsonSerializer.Deserialize<Show>(apiResponse);
 
-                return Ok(show);
+                    if (showFromApi != null && showFromApi.Network != null && showFromApi.Network.Country != null && showFromApi.Network.Country.Code != null)
+                    {
+                        // Verificar si el país ya existe en la base de datos
+                        var existingCountry = await _dbContext.Countries.FindAsync(showFromApi.Network.Country.Code);
+
+                        if (existingCountry == null)
+                        {
+                            _dbContext.Countries.Add(showFromApi.Network.Country);
+                        }
+
+                        // Agregar el show a la base de datos si no existe
+                        var existingShow = await _dbContext.Shows.FindAsync(showFromApi.Id);
+
+                        if (existingShow == null)
+                        {
+                            _dbContext.Shows.Add(showFromApi);
+                        }
+
+                        await _dbContext.SaveChangesAsync();
+                        return Ok("Los datos del show se han guardado en la base de datos.");
+                    }
+                    else
+                    {
+                        return BadRequest("La respuesta de la API no tiene la estructura esperada o los datos son nulos.");
+                    }
+                }
+                else
+                {
+                    return BadRequest("No se pudo obtener los datos del show de la API.");
+                }
             }
-
-            return StatusCode((int)response.StatusCode, "Error al obtener datos desde la API externa");
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Se produjo un error: {ex}");
+            }
         }
+
+
     }
-}
 }
