@@ -50,7 +50,7 @@ namespace PruebaCodere.Controllers
         }
 
         [HttpGet("ObtenerShow/{id}")]
-        public async Task<IActionResult> GetShowById(int id)
+        public async Task<IActionResult> GetShow(int id)
         {
             var show = await _dbContext.Shows
                 .Include(s => s.Rating)
@@ -69,7 +69,7 @@ namespace PruebaCodere.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> GetAndSaveShow(int id)
+        public async Task<IActionResult> PostShowFromApi(int id)
         {
             try
             {

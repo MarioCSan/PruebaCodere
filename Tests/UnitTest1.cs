@@ -60,10 +60,10 @@ namespace PruebaCodere.Tests
             };
 
             // Act
-            var result = await _controller.GetAndSaveShow(validId);
+            var result = await _controller.PostShowFromApi(validId);
 
             // Assert
-            //Assert.IsNotNull(result);
+            Assert.Catch(result);
             //Assert.IsInstanceOf<OkObjectResult>(result);
         }
 
